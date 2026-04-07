@@ -10,22 +10,27 @@ st.set_page_config(page_title="CashChopp - Fidelidade", page_icon="🍺")
 # LINK DA SUA API (Mantenha o seu link atual aqui)
 URL_API = "https://script.google.com/macros/s/AKfycbwfOpeCvM-osCHjYh-JTh8noJ0RFE17ZvGunSlxySvkH2KD9Qq9xMpZKJpgGL1qtE8i/exec"
 
-# 2. Estilo Visual Simétrico e Moderno
+# 2. Estilo Visual Simétrico e Centralizado
 st.markdown("""
     <style>
     .main { background-color: #1a1a1a; }
     h1 { color: #ffcc00; text-align: center; font-weight: bold; margin-bottom: 5px; }
     h3 { color: white; text-align: center; margin-top: 0px; }
     
-    /* Ajuste de Simetria dos Botões */
-    .stButton>button { 
-        width: 100%; 
+    /* CENTRALIZAÇÃO E SIMETRIA DOS BOTÕES */
+    div.stButton {
+        text-align: center;
+    }
+    div.stButton > button {
+        width: 160px; /* Largura fixa para garantir simetria perfeita */
         border-radius: 8px; 
         height: 3.2em; 
         font-weight: bold;
-        font-size: 15px;
+        font-size: 14px;
         border: 2px solid #ffcc00;
         transition: 0.3s;
+        margin: 0 auto; 
+        display: block;
     }
     
     /* Caixa de Saldo e ID */
@@ -45,9 +50,17 @@ st.markdown("""
         font-weight: bold;
         display: inline-block;
         margin-top: 10px;
+        font-size: 18px;
     }
     
-    /* Remove espaços extras do Streamlit */
+    /* Ajustes para telas de celular */
+    @media (max-width: 600px) {
+        div.stButton > button {
+            width: 140px; 
+            font-size: 12px;
+        }
+    }
+
     .block-container { padding-top: 2rem; }
     [data-testid="stSidebar"] { display: none; }
     </style>
@@ -60,18 +73,18 @@ def limpar(txt):
 st.title("🍺 CashChopp")
 st.markdown("### Seu Fidelidade Digital")
 
-# 3. Navegação Simétrica (Abas)
+# 3. Navegação Centralizada (Abas)
 if 'aba' not in st.session_state:
     st.session_state.aba = 'login'
 
-# Colunas com pouco espaço entre elas para simetria
-c1, c2 = st.columns(2, gap="small")
+# Usamos 4 colunas para "espremer" os botões no meio da tela
+col_espaço1, col_c1, col_c2, col_espaço2 = st.columns([1, 2, 2, 1])
 
-with c1:
+with col_c1:
     if st.button("🔍 VER SALDO"):
         st.session_state.aba = 'login'
 
-with c2:
+with col_c2:
     if st.button("📝 CADASTRAR"):
         st.session_state.aba = 'cadastro'
 
@@ -81,7 +94,12 @@ st.markdown("---")
 if st.session_state.aba == 'login':
     cpf_input = st.text_input("Digite seu CPF para consultar:", placeholder="Apenas números")
     
-    if st.button("VERIFICAR"):
+    # Centralizando o botão de VERIFICAR
+    _, col_v, _ = st.columns([1, 2, 1])
+    with col_v:
+        btn_verificar = st.button("VERIFICAR")
+
+    if btn_verificar:
         if not cpf_input:
             st.warning("Informe seu CPF.")
         else:
@@ -110,7 +128,7 @@ if st.session_state.aba == 'login':
                                 """, unsafe_allow_html=True)
                             if saldo > 0: st.balloons()
                         else:
-                            st.error("CPF não encontrado. Faça seu cadastro ao lado!")
+                            st.error("CPF não encontrado. Clique em CADASTRAR acima!")
                 except:
                     st.error("Erro de conexão. Tente novamente.")
 
@@ -142,10 +160,10 @@ else:
                 try:
                     r = requests.post(URL_API, json=pacote, timeout=15)
                     if r.status_code == 200:
-                        st.success("✅ Tudo pronto! Agora é só beber.")
+                        st.success("✅ Tudo pronto!")
                         st.markdown(f"""
                             <div class="saldo-box">
-                                <p style="color: white;">Guarde seu ID de Resgate:</p>
+                                <p style="color: white;">ID de Resgate Gerado:</p>
                                 <div class="id-badge" style="font-size: 25px;">{idd_novo}</div>
                             </div>
                         """, unsafe_allow_html=True)
