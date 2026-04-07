@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import streamlit.components.v1 as components
 import re
 import requests
 import hashlib
@@ -8,6 +8,32 @@ import hashlib
 st.set_page_config(page_title="CashChopp - Fidelidade", page_icon="🍺")
 
 URL_API = "https://script.google.com/macros/s/AKfycbwfOpeCvM-osCHjYh-JTh8noJ0RFE17ZvGunSlxySvkH2KD9Qq9xMpZKJpgGL1qtE8i/exec"
+
+# --- TRUQUE DE JAVASCRIPT PARA MÁSCARA AUTOMÁTICA ---
+# Este código roda no navegador do cliente e coloca as barras na data
+components.html(
+    """
+    <script>
+    const executeMask = () => {
+        const inputs = window.parent.document.querySelectorAll('input[placeholder*="DD/MM/AAAA"]');
+        inputs.forEach(input => {
+            input.addEventListener('input', (e) => {
+                let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+                if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, "$1/$2/$3");
+                else if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, "$1/$2");
+                e.target.value = v;
+                // Dispara evento para o Streamlit notar a mudança
+                e.target.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+    }
+    // Tenta aplicar a máscara periodicamente caso o formulário demore a carregar
+    setTimeout(executeMask, 1000);
+    setInterval(executeMask, 3000);
+    </script>
+    """,
+    height=0,
+)
 
 # 2. Estilo Visual
 st.markdown("""
@@ -67,9 +93,9 @@ if st.session_state.aba == 'login':
 
     if btn_verificar:
         if not validar_cpf(cpf_input):
-            st.error("CPF Inválido! Verifique os números.")
+            st.error("CPF Inválido!")
         else:
-            with st.spinner('Consultando seu chopp...'):
+            with st.spinner('Consultando...'):
                 try:
                     res = requests.get(URL_API, timeout=15)
                     dados = res.json()
@@ -84,12 +110,11 @@ if st.session_state.aba == 'login':
                         st.markdown(f"""<div class="saldo-box">
                             <p style="color: #bbb; margin-bottom: 0;">Seu Saldo:</p>
                             <h1 style="color: #ffcc00; font-size: 50px; margin: 0;">R$ {saldo:.2f}</h1>
-                            <p style="color: #bbb; margin-top: 15px; font-size: 14px;">Seu ID para Resgate:</p>
-                            <div class="id-badge">{idd}</div>
+                            <p style="color: #bbb; margin-top: 15px; font-size: 14px;">ID para Resgate: <b style="color:#ffcc00">{idd}</b></p>
                         </div>""", unsafe_allow_html=True)
                         if saldo > 0: st.balloons()
                     else:
-                        st.error("CPF não encontrado no sistema.")
+                        st.error("CPF não encontrado.")
                 except: st.error("Erro de conexão.")
 
 else:
@@ -99,24 +124,21 @@ else:
         n_cpf = st.text_input("CPF (Apenas números):", max_chars=11)
         n_cpf2 = st.text_input("Confirme o CPF:", max_chars=11)
         
-        # CAMPO DE DATA COM FORMATO SUGERIDO
-        n_nasc = st.text_input("Data de Nascimento:", placeholder="DD/MM/AAAA (ex: 15/05/1990)")
+        # O JAVASCRIPT BUSCA O PLACEHOLDER ABAIXO PARA APLICAR A MÁSCARA
+        n_nasc = st.text_input("Data de Nascimento:", placeholder="DD/MM/AAAA")
         
         n_email = st.text_input("E-mail:")
         btn_cad = st.form_submit_button("CADASTRAR AGORA")
         
         if btn_cad:
-            # Validação simples de formato de data via Regex (00/00/0000)
-            formato_data = re.match(r"^\d{2}/\d{2}/\d{4}$", n_nasc)
-            
             if n_cpf != n_cpf2:
-                st.error("Os CPFs digitados não são iguais!")
+                st.error("CPFs não conferem!")
             elif not validar_cpf(n_cpf):
-                st.error("Este número de CPF é inválido!")
-            elif not formato_data:
-                st.error("Formato de data inválido! Use DD/MM/AAAA (com as barras).")
+                st.error("CPF inválido!")
+            elif not re.match(r"^\d{2}/\d{2}/\d{4}$", n_nasc):
+                st.error("Use o formato 00/00/0000 na data.")
             elif not n_nome:
-                st.error("Preencha o nome completo.")
+                st.error("Nome obrigatório.")
             else:
                 c_limpo = limpar(n_cpf)
                 idd_novo = hashlib.md5(c_limpo.encode()).hexdigest()[:6].upper()
@@ -124,9 +146,8 @@ else:
                 try:
                     r = requests.post(URL_API, json=pacote, timeout=15)
                     st.success("✅ Cadastro concluído! Verifique seu e-mail.")
-                    st.markdown(f"""<div class="saldo-box"><p style="color: white;">ID de Resgate:</p><div class="id-badge">{idd_novo}</div></div>""", unsafe_allow_html=True)
                     st.balloons()
-                except: st.error("Erro de conexão.")
+                except: st.error("Erro ao salvar.")
 
 st.markdown("---")
 st.caption("Fidelidade CashChopp - São Luís/MA")
