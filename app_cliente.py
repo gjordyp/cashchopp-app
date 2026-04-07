@@ -98,24 +98,32 @@ else:
         n_nome = st.text_input("Nome Completo:").upper()
         n_cpf = st.text_input("CPF (Apenas números):", max_chars=11)
         n_cpf2 = st.text_input("Confirme o CPF:", max_chars=11)
-        n_nasc = st.text_input("Nascimento (DD/MM/AAAA):")
+        
+        # CAMPO DE DATA COM FORMATO SUGERIDO
+        n_nasc = st.text_input("Data de Nascimento:", placeholder="DD/MM/AAAA (ex: 15/05/1990)")
+        
         n_email = st.text_input("E-mail:")
         btn_cad = st.form_submit_button("CADASTRAR AGORA")
         
         if btn_cad:
+            # Validação simples de formato de data via Regex (00/00/0000)
+            formato_data = re.match(r"^\d{2}/\d{2}/\d{4}$", n_nasc)
+            
             if n_cpf != n_cpf2:
                 st.error("Os CPFs digitados não são iguais!")
             elif not validar_cpf(n_cpf):
                 st.error("Este número de CPF é inválido!")
-            elif not n_nome or len(n_nasc) < 10:
-                st.error("Preencha todos os campos.")
+            elif not formato_data:
+                st.error("Formato de data inválido! Use DD/MM/AAAA (com as barras).")
+            elif not n_nome:
+                st.error("Preencha o nome completo.")
             else:
                 c_limpo = limpar(n_cpf)
                 idd_novo = hashlib.md5(c_limpo.encode()).hexdigest()[:6].upper()
                 pacote = {"mode": "update", "cpf": "'" + c_limpo, "nome": n_nome, "saldo": 0, "id_digital": idd_novo, "nascimento": n_nasc, "email": n_email.lower()}
                 try:
                     r = requests.post(URL_API, json=pacote, timeout=15)
-                    st.success("✅ Cadastro concluído!")
+                    st.success("✅ Cadastro concluído! Verifique seu e-mail.")
                     st.markdown(f"""<div class="saldo-box"><p style="color: white;">ID de Resgate:</p><div class="id-badge">{idd_novo}</div></div>""", unsafe_allow_html=True)
                     st.balloons()
                 except: st.error("Erro de conexão.")
