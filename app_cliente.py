@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import pandas as pd
 import re
 import requests
 import hashlib
@@ -8,32 +8,6 @@ import hashlib
 st.set_page_config(page_title="CashChopp - Fidelidade", page_icon="🍺")
 
 URL_API = "https://script.google.com/macros/s/AKfycbwfOpeCvM-osCHjYh-JTh8noJ0RFE17ZvGunSlxySvkH2KD9Qq9xMpZKJpgGL1qtE8i/exec"
-
-# --- TRUQUE DE JAVASCRIPT PARA MÁSCARA AUTOMÁTICA ---
-# Este código roda no navegador do cliente e coloca as barras na data
-components.html(
-    """
-    <script>
-    const executeMask = () => {
-        const inputs = window.parent.document.querySelectorAll('input[placeholder*="DD/MM/AAAA"]');
-        inputs.forEach(input => {
-            input.addEventListener('input', (e) => {
-                let v = e.target.value.replace(/\D/g, '').slice(0, 8);
-                if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, "$1/$2/$3");
-                else if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, "$1/$2");
-                e.target.value = v;
-                // Dispara evento para o Streamlit notar a mudança
-                e.target.dispatchEvent(new Event('input', { bubbles: true }));
-            });
-        });
-    }
-    // Tenta aplicar a máscara periodicamente caso o formulário demore a carregar
-    setTimeout(executeMask, 1000);
-    setInterval(executeMask, 3000);
-    </script>
-    """,
-    height=0,
-)
 
 # 2. Estilo Visual
 st.markdown("""
@@ -124,19 +98,26 @@ else:
         n_cpf = st.text_input("CPF (Apenas números):", max_chars=11)
         n_cpf2 = st.text_input("Confirme o CPF:", max_chars=11)
         
-        # O JAVASCRIPT BUSCA O PLACEHOLDER ABAIXO PARA APLICAR A MÁSCARA
-        n_nasc = st.text_input("Data de Nascimento:", placeholder="DD/MM/AAAA")
+        # Campo de texto normal para evitar travamentos
+        n_nasc_raw = st.text_input("Data de Nascimento:", placeholder="Ex: 10051990 ou 10/05/1990")
         
         n_email = st.text_input("E-mail:")
         btn_cad = st.form_submit_button("CADASTRAR AGORA")
         
         if btn_cad:
+            # Lógica para formatar a data automaticamente caso o cliente esqueça as barras
+            data_limpa = limpar(n_nasc_raw)
+            if len(data_limpa) == 8:
+                n_nasc = f"{data_limpa[:2]}/{data_limpa[2:4]}/{data_limpa[4:]}"
+            else:
+                n_nasc = n_nasc_raw # Mantém o que ele digitou para validar erro abaixo
+
             if n_cpf != n_cpf2:
                 st.error("CPFs não conferem!")
             elif not validar_cpf(n_cpf):
                 st.error("CPF inválido!")
             elif not re.match(r"^\d{2}/\d{2}/\d{4}$", n_nasc):
-                st.error("Use o formato 00/00/0000 na data.")
+                st.error("Data incompleta! Use 8 números (ex: 10051990).")
             elif not n_nome:
                 st.error("Nome obrigatório.")
             else:
@@ -145,7 +126,7 @@ else:
                 pacote = {"mode": "update", "cpf": "'" + c_limpo, "nome": n_nome, "saldo": 0, "id_digital": idd_novo, "nascimento": n_nasc, "email": n_email.lower()}
                 try:
                     r = requests.post(URL_API, json=pacote, timeout=15)
-                    st.success("✅ Cadastro concluído! Verifique seu e-mail.")
+                    st.success(f"✅ Cadastro concluído! Data salva: {n_nasc}")
                     st.balloons()
                 except: st.error("Erro ao salvar.")
 
