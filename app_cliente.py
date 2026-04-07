@@ -7,33 +7,48 @@ import hashlib
 # 1. Configuração de Página
 st.set_page_config(page_title="CashChopp - Fidelidade", page_icon="🍺")
 
-# LINK DA SUA API (O mesmo que você usa no PC)
+# LINK DA SUA API (Mantenha o seu link atual aqui)
 URL_API = "https://script.google.com/macros/s/AKfycbwfOpeCvM-osCHjYh-JTh8noJ0RFE17ZvGunSlxySvkH2KD9Qq9xMpZKJpgGL1qtE8i/exec"
 
-# 2. Estilo Visual Personalizado
+# 2. Estilo Visual Simétrico e Moderno
 st.markdown("""
     <style>
     .main { background-color: #1a1a1a; }
-    h1 { color: #ffcc00; text-align: center; font-weight: bold; margin-bottom: 0px; }
-    h3 { color: white; text-align: center; }
-    /* Estilo dos Botões de Navegação */
+    h1 { color: #ffcc00; text-align: center; font-weight: bold; margin-bottom: 5px; }
+    h3 { color: white; text-align: center; margin-top: 0px; }
+    
+    /* Ajuste de Simetria dos Botões */
     .stButton>button { 
         width: 100%; 
-        border-radius: 10px; 
-        height: 3.5em; 
+        border-radius: 8px; 
+        height: 3.2em; 
         font-weight: bold;
-        font-size: 16px;
+        font-size: 15px;
+        border: 2px solid #ffcc00;
+        transition: 0.3s;
     }
-    /* Caixa de Saldo */
+    
+    /* Caixa de Saldo e ID */
     .saldo-box { 
         background-color: #333; 
-        padding: 25px; 
+        padding: 20px; 
         border-radius: 15px; 
         border: 2px solid #ffcc00; 
         text-align: center; 
-        margin-top: 20px;
+        margin-top: 15px;
     }
-    /* Esconder o menu lateral original do Streamlit para ficar mais limpo */
+    .id-badge {
+        background-color: #ffcc00;
+        color: black;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        display: inline-block;
+        margin-top: 10px;
+    }
+    
+    /* Remove espaços extras do Streamlit */
+    .block-container { padding-top: 2rem; }
     [data-testid="stSidebar"] { display: none; }
     </style>
     """, unsafe_allow_html=True)
@@ -41,37 +56,36 @@ st.markdown("""
 def limpar(txt):
     return re.sub(r'\D', '', str(txt)).strip()
 
-# Título Principal
+# Cabeçalho
 st.title("🍺 CashChopp")
-st.markdown("---")
+st.markdown("### Seu Fidelidade Digital")
 
-# 3. Botões de Navegação no Topo (Lado a Lado)
-col1, col2 = st.columns(2)
-
-# Usamos o "session_state" para saber qual aba está ativa
+# 3. Navegação Simétrica (Abas)
 if 'aba' not in st.session_state:
     st.session_state.aba = 'login'
 
-with col1:
+# Colunas com pouco espaço entre elas para simetria
+c1, c2 = st.columns(2, gap="small")
+
+with c1:
     if st.button("🔍 VER SALDO"):
         st.session_state.aba = 'login'
 
-with col2:
-    if st.button("📝 CADASTRE-SE"):
+with c2:
+    if st.button("📝 CADASTRAR"):
         st.session_state.aba = 'cadastro'
 
 st.markdown("---")
 
-# 4. Lógica das Telas
+# 4. Conteúdo das Telas
 if st.session_state.aba == 'login':
-    st.subheader("Consulte seu saldo")
-    cpf_input = st.text_input("Digite seu CPF:", placeholder="000.000.000-00")
+    cpf_input = st.text_input("Digite seu CPF para consultar:", placeholder="Apenas números")
     
-    if st.button("VER MEU SALDO AGORA"):
+    if st.button("VERIFICAR"):
         if not cpf_input:
-            st.warning("Por favor, informe o CPF.")
+            st.warning("Informe seu CPF.")
         else:
-            with st.spinner('Buscando seu chopp...'):
+            with st.spinner('Consultando barril...'):
                 try:
                     res = requests.get(URL_API, timeout=15)
                     if res.status_code == 200:
@@ -83,49 +97,60 @@ if st.session_state.aba == 'login':
                         if cliente:
                             nome = str(cliente['nome']).split()[0].upper()
                             saldo = float(cliente['saldo'])
-                            st.markdown(f"### Olá, **{nome}**! 🍻")
-                            st.markdown(f"""<div class="saldo-box">
-                                <p style="color: #bbb; margin-bottom: 5px;">Você tem acumulado:</p>
-                                <h1 style="color: #ffcc00; font-size: 55px; margin: 0;">R$ {saldo:.2f}</h1>
-                            </div>""", unsafe_allow_html=True)
+                            idd = str(cliente.get('id_digital', '---')).upper()
+                            
+                            st.markdown(f"### Olá, **{nome}**!")
+                            st.markdown(f"""
+                                <div class="saldo-box">
+                                    <p style="color: #bbb; margin-bottom: 0;">Seu Saldo:</p>
+                                    <h1 style="color: #ffcc00; font-size: 50px; margin: 0;">R$ {saldo:.2f}</h1>
+                                    <p style="color: #bbb; margin-top: 15px; font-size: 14px;">Seu ID para Resgate:</p>
+                                    <div class="id-badge">{idd}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
                             if saldo > 0: st.balloons()
                         else:
-                            st.error("CPF não encontrado. Clique em CADASTRE-SE no topo!")
+                            st.error("CPF não encontrado. Faça seu cadastro ao lado!")
                 except:
-                    st.error("Erro ao conectar com o servidor. Tente novamente.")
+                    st.error("Erro de conexão. Tente novamente.")
 
 else:
     st.subheader("Novo Cadastro")
     with st.form("form_cad"):
         n_nome = st.text_input("Nome Completo:").upper()
-        n_cpf = st.text_input("CPF (apenas números):", max_chars=11)
+        n_cpf = st.text_input("CPF (Apenas números):", max_chars=11)
         n_nasc = st.text_input("Nascimento (DD/MM/AAAA):")
         n_email = st.text_input("E-mail:")
         
-        btn_cad = st.form_submit_button("FINALIZAR E GANHAR CASHBACK")
+        btn_cad = st.form_submit_button("CADASTRAR AGORA")
         
         if btn_cad:
             c_limpo = limpar(n_cpf)
             if len(c_limpo) != 11 or not n_nome:
-                st.error("Preencha os dados corretamente!")
+                st.error("Preencha os dados corretamente.")
             else:
-                idd = hashlib.md5(c_limpo.encode()).hexdigest()[:6].upper()
+                idd_novo = hashlib.md5(c_limpo.encode()).hexdigest()[:6].upper()
                 pacote = {
                     "mode": "update",
                     "cpf": "'" + c_limpo,
                     "nome": n_nome,
                     "saldo": 0,
-                    "id_digital": idd,
+                    "id_digital": idd_novo,
                     "nascimento": n_nasc,
                     "email": n_email.lower()
                 }
                 try:
                     r = requests.post(URL_API, json=pacote, timeout=15)
                     if r.status_code == 200:
-                        st.success("✅ Cadastro concluído!")
-                        st.info(f"Seu ID Digital: **{idd}**")
+                        st.success("✅ Tudo pronto! Agora é só beber.")
+                        st.markdown(f"""
+                            <div class="saldo-box">
+                                <p style="color: white;">Guarde seu ID de Resgate:</p>
+                                <div class="id-badge" style="font-size: 25px;">{idd_novo}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
                         st.balloons()
-                    else: st.error("Erro ao salvar.")
+                    else: st.error("Erro ao salvar dados.")
                 except: st.error("Erro de conexão.")
 
 st.markdown("---")
